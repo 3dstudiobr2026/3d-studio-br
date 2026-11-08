@@ -166,9 +166,7 @@ function renderEditorImages() {
   });
 }
 
-  el('editor').classList.add('hidden');
-  editingImages = null;
-}
+
 async function deleteProduct(id){if(!isAdmin||!confirm('Excluir este produto?'))return;const {error}=await db.from('Produtos').delete().eq('id',id);if(error)alert('Erro: '+error.message);else await refresh()}
 
 el('pimage').addEventListener('change', e => {
