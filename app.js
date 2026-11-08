@@ -65,8 +65,101 @@ function newProduct(){if(!isAdmin)return;editing=null;imageData=null;selectedFil
 function editProduct(id){if(!isAdmin)return;const p=products.find(x=>x.id===id);if(!p)return;editing=id;imageData=p.image;selectedFile=null;el('pname').value=p.name;el('pcat').value=p.category;el('pprice').value=p.price??'';el('pstatus').value=p.status;el('pdesc').value=p.desc||'';el('psku').value='';el('pvisible').value=String(p.visible!==false);el('pimage').value='';el('imagePreview').src=p.image||'assets/logo.jpg';el('imagePreview').classList.remove('hidden');el('editorTitle').textContent='Editar produto';el('editor').classList.remove('hidden');el('editor').scrollIntoView({behavior:'smooth'})}
 function closeEditor(){el('editor').classList.add('hidden')}
 async function deleteProduct(id){if(!isAdmin||!confirm('Excluir este produto?'))return;const {error}=await db.from('Produtos').delete().eq('id',id);if(error)alert('Erro: '+error.message);else await refresh()}
-el('pimage').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>3*1024*1024){alert('Escolha JPG, PNG ou WebP de até 3 MB.');e.target.value='';return}selectedFile=f;el('imagePreview').src=URL.createObjectURL(f);el('imagePreview').classList.remove('hidden')});
-el('productForm').onsubmit=async e=>{e.preventDefault();if(!isAdmin)return;const button=e.target.querySelector('[type=submit]');button.disabled=true;try{let url=imageData||'assets/logo.jpg';if(selectedFile){const ext=selectedFile.name.split('.').pop().toLowerCase();const filename=`${crypto.randomUUID()}.${ext}`;const {error:uploadError}=await db.storage.from('produtos').upload(filename,selectedFile,{upsert:false,contentType:selectedFile.type});if(uploadError)throw uploadError;url=db.storage.from('produtos').getPublicUrl(filename).data.publicUrl}const payload={nome:el('pname').value.trim(),categoria:el('pcat').value,preco:el('pprice').value===''?null:Number(el('pprice').value),disponibilidade:el('pstatus').value,publicado:el('pvisible').value==='true',descricao:el('pdesc').value.trim(),imagem_url:url};if(!payload.nome)throw Error('Informe o nome.');const {error}=editing?await db.from('Produtos').update(payload).eq('id',editing):await db.from('Produtos').insert(payload);if(error)throw error;closeEditor();await refresh()}catch(err){alert('Não foi possível salvar: '+err.message)}finally{button.disabled=false}};
+
+el('pimage').addEventListener('change', e => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  if (files.some(f =>
+    !['image/jpeg', 'image/png', 'image/webp'].includes(f.type) ||
+    f.size > 3 * 1024 * 1024
+  )) {
+    alert('Escolha imagens JPG, PNG ou WebP de até 3 MB cada.');
+    e.target.value = '';
+    return;
+  }
+
+  selectedFile = files;
+  el('imagePreview').src = URL.createObjectURL(files[0]);
+  el('imagePreview').classList.remove('hidden');
+});
+
+el('productForm').onsubmit = async e => {
+  e.preventDefault();
+  if (!isAdmin || !db) return;
+
+  const button = e.target.querySelector('[type=submit]');
+  button.disabled = true;
+
+  try {
+    const existing = editing
+      ? products.find(p => p.id === editing)
+      : null;
+
+    let urls = [...(existing?.images || [])];
+    let mainUrl = imageData || 'assets/logo.jpg';
+
+    if (Array.isArray(selectedFile) && selectedFile.length) {
+      for (const file of selectedFile) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const filename = `${crypto.randomUUID()}.${ext}`;
+
+        const { error: uploadError } = await db.storage
+          .from('produtos')
+          .upload(filename, file, {
+            upsert: false,
+            contentType: file.type
+          });
+
+        if (uploadError) throw uploadError;
+
+        const url = db.storage
+          .from('produtos')
+          .getPublicUrl(filename).data.publicUrl;
+
+        urls.push(url);
+      }
+
+      if (!existing || mainUrl === 'assets/logo.jpg') {
+        mainUrl = urls[0];
+      }
+    }
+
+    if (mainUrl && mainUrl !== 'assets/logo.jpg' &&
+        !urls.includes(mainUrl)) {
+      urls.unshift(mainUrl);
+    }
+
+    const payload = {
+      nome: el('pname').value.trim(),
+      categoria: el('pcat').value,
+      preco: el('pprice').value === ''
+        ? null : Number(el('pprice').value),
+      disponibilidade: el('pstatus').value,
+      publicado: el('pvisible').value === 'true',
+      descricao: el('pdesc').value.trim(),
+      imagem_url: mainUrl,
+      imagens_urls: urls
+    };
+
+    if (!payload.nome) throw Error('Informe o nome.');
+
+    const { error } = editing
+      ? await db.from('Produtos').update(payload).eq('id', editing)
+      : await db.from('Produtos').insert(payload);
+
+    if (error) throw error;
+
+    selectedFile = null;
+    closeEditor();
+    await refresh();
+
+  } catch (err) {
+    alert('Não foi possível salvar: ' + err.message);
+  } finally {
+    button.disabled = false;
+  }
+};
 function exportData(){const blob=new Blob([JSON.stringify(products,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='catalogo-3dstudiobr.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 el('searchProducts').addEventListener('input',e=>{searchTerm=e.target.value.toLocaleLowerCase('pt-BR').trim();render()});el('sortProducts').addEventListener('change',e=>{sortMode=e.target.value;render()});
 Object.assign(window,{showSite,showAdmin,openWhatsApp,login,logout,newProduct,editProduct,deleteProduct,closeEditor,exportData});
