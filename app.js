@@ -18,6 +18,7 @@ el('products').querySelectorAll('[data-product-image]').forEach(img => {
 });
                   }
 let modalProduct = null;
+let editingImages = null;
 let modalPhotoIndex = 0;
 
 function openProductModal(id) {
@@ -125,9 +126,12 @@ async function checkAdmin(){
 }
 async function login(){if(!db){alert('Primeiro configure a API URL e a chave pública em config.js.');return}const email=el('adminEmail').value.trim(),password=el('adminPassword').value;const {error}=await db.auth.signInWithPassword({email,password});if(error){alert('Falha no login: '+error.message);return}await checkAdmin();await refresh()}
 async function logout(){if(db)await db.auth.signOut();await checkAdmin()}
-function newProduct(){if(!isAdmin)return;editing=null;imageData=null;selectedFile=null;el('productForm').reset();el('pvisible').value='true';el('imagePreview').classList.add('hidden');el('editorTitle').textContent='Novo produto';el('editor').classList.remove('hidden');el('editor').scrollIntoView({behavior:'smooth'})}
-function editProduct(id){if(!isAdmin)return;const p=products.find(x=>x.id===id);if(!p)return;editing=id;imageData=p.image;selectedFile=null;el('pname').value=p.name;el('pcat').value=p.category;el('pprice').value=p.price??'';el('pstatus').value=p.status;el('pdesc').value=p.desc||'';el('psku').value='';el('pvisible').value=String(p.visible!==false);el('pimage').value='';el('imagePreview').src=p.image||'assets/logo.jpg';el('imagePreview').classList.remove('hidden');el('editorTitle').textContent='Editar produto';el('editor').classList.remove('hidden');el('editor').scrollIntoView({behavior:'smooth'})}
-function closeEditor(){el('editor').classList.add('hidden')}
+function newProduct(){if(!isAdmin)return;editing=null;imageData=null;selectedFile=null;editingImages=null;el('productForm').reset();el('pvisible').value='true';el('imagePreview').classList.add('hidden');el('editorTitle').textContent='Novo produto';el('editor').classList.remove('hidden');el('editor').scrollIntoView({behavior:'smooth'})}
+function editProduct(id){if(!isAdmin)return;const p=products.find(x=>x.id===id);if(!p)return;editing=id;imageData=p.image;selectedFile=null;editingImages = [...(p.images || (p.image ? [p.image] : []))];el('pname').value=p.name;el('pcat').value=p.category;el('pprice').value=p.price??'';el('pstatus').value=p.status;el('pdesc').value=p.desc||'';el('psku').value='';el('pvisible').value=String(p.visible!==false);el('pimage').value='';el('imagePreview').src=p.image||'assets/logo.jpg';el('imagePreview').classList.remove('hidden');el('editorTitle').textContent='Editar produto';el('editor').classList.remove('hidden');el('editor').scrollIntoView({behavior:'smooth'})}
+function closeEditor(){
+  el('editor').classList.add('hidden');
+  editingImages = null;
+}
 async function deleteProduct(id){if(!isAdmin||!confirm('Excluir este produto?'))return;const {error}=await db.from('Produtos').delete().eq('id',id);if(error)alert('Erro: '+error.message);else await refresh()}
 
 el('pimage').addEventListener('change', e => {
@@ -160,7 +164,9 @@ el('productForm').onsubmit = async e => {
       ? products.find(p => p.id === editing)
       : null;
 
-    let urls = [...(existing?.images || [])];
+    let urls = editingImages !== null
+  ? [...editingImages]
+  : [...(existing?.images || [])];
     let mainUrl = imageData || 'assets/logo.jpg';
 
     if (Array.isArray(selectedFile) && selectedFile.length) {
