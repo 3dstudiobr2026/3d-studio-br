@@ -17,9 +17,18 @@ function showSite(){el('site').classList.remove('hidden');el('admin').classList.
 function showAdmin(){el('site').classList.add('hidden');el('admin').classList.add('open');el('phone').value='62981327266';window.scrollTo(0,0)}
 function openWhatsApp(id){let p=products.find(x=>x.id===id);const msg=p?`Olá! Vim pelo site da 3D Studio BR e gostaria de ${p.price==null?'solicitar orçamento para':'pedir'} ${p.name} (código ${p.sku||p.id}). ${p.price==null?'':`Preço anunciado: ${money(p.price)}. `}Poderia informar a disponibilidade e o prazo?`:'Olá! Vim pelo site da 3D Studio BR e gostaria de informações sobre produtos personalizados.';window.open(`https://wa.me/${config.whatsapp||'5562981327266'}?text=${encodeURIComponent(msg)}`,'_blank','noopener,noreferrer')}
 // Os campos exibidos são adaptados à tabela public."Produtos" existente.
-const fromRow=p=>({id:String(p.id),name:p.nome,category:p.categoria||'Outros',
-  price:p.preco,status:p.disponibilidade||'Disponível',desc:p.descricao||'',
-  image:p.imagem_url||'assets/logo.jpg',visible:p.publicado===true,featured:false});
+const fromRow=p=>({
+  id:String(p.id),
+  name:p.nome,
+  category:p.categoria||'Outros',
+  price:p.preco,
+  status:p.disponibilidade||'Disponível',
+  desc:p.descricao||'',
+  image:p.imagem_url||'assets/logo.jpg',
+  images:Array.isArray(p.imagens_urls)?p.imagens_urls:[],
+  visible:p.publicado===true,
+  featured:false
+});
 async function refresh(){
   if(!db){render();return}
   // Somente os produtos publicados são solicitados na vitrine pública.
