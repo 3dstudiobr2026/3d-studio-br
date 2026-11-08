@@ -127,8 +127,42 @@ async function checkAdmin(){
 async function login(){if(!db){alert('Primeiro configure a API URL e a chave pública em config.js.');return}const email=el('adminEmail').value.trim(),password=el('adminPassword').value;const {error}=await db.auth.signInWithPassword({email,password});if(error){alert('Falha no login: '+error.message);return}await checkAdmin();await refresh()}
 async function logout(){if(db)await db.auth.signOut();await checkAdmin()}
 function newProduct(){if(!isAdmin)return;editing=null;imageData=null;selectedFile=null;editingImages=null;el('productForm').reset();el('pvisible').value='true';el('imagePreview').classList.add('hidden');el('editorTitle').textContent='Novo produto';el('editor').classList.remove('hidden');el('editor').scrollIntoView({behavior:'smooth'})}
-function editProduct(id){if(!isAdmin)return;const p=products.find(x=>x.id===id);if(!p)return;editing=id;imageData=p.image;selectedFile=null;editingImages = [...(p.images || (p.image ? [p.image] : []))];el('pname').value=p.name;el('pcat').value=p.category;el('pprice').value=p.price??'';el('pstatus').value=p.status;el('pdesc').value=p.desc||'';el('psku').value='';el('pvisible').value=String(p.visible!==false);el('pimage').value='';el('imagePreview').src=p.image||'assets/logo.jpg';el('imagePreview').classList.remove('hidden');el('editorTitle').textContent='Editar produto';el('editor').classList.remove('hidden');el('editor').scrollIntoView({behavior:'smooth'})}
-function closeEditor(){
+function editProduct(id){if(!isAdmin)return;const p=products.find(x=>x.id===id);if(!p)return;editing=id;imageData=p.image;selectedFile=null;editingImages = [...(p.images || (p.image ? [p.image] : []))];el('pname').value=p.name;el('pcat').value=p.category;el('pprice').value=p.price??'';el('pstatus').value=p.status;el('pdesc').value=p.desc||'';el('psku').value='';el('pvisible').value=String(p.visible!==false);el('pimage').value='';el('imagePreview').src=p.image||'assets/logo.jpg';el('imagePreview').classList.remove('hidden');el('editorTitle').textContent='Editar produto';el('editor').classList.remove('hidden');renderEditorImages();el('editor').scrollIntoView({behavior:'smooth'})}
+function closeEditor(){  
+function renderEditorImages() {
+  const gallery = el('imageGalleryEditor');
+  if (!gallery) return;
+
+  gallery.innerHTML = '';
+
+  if (!editingImages || !editingImages.length) {
+    gallery.textContent = 'Nenhuma fotografia cadastrada.';
+    return;
+  }
+
+  editingImages.forEach((url, index) => {
+    const item = document.createElement('div');
+    item.style.cssText = 'display:inline-block;margin:8px;text-align:center;';
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = 'width:90px;height:90px;object-fit:cover;border-radius:8px;display:block;';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Excluir';
+    button.style.cssText = 'margin-top:6px;background:#ff2948;color:white;border:0;padding:6px;border-radius:6px;cursor:pointer;';
+
+    button.onclick = () => {
+      editingImages.splice(index, 1);
+      renderEditorImages();
+    };
+
+    item.append(img, button);
+    gallery.appendChild(item);
+  });
+}
+
   el('editor').classList.add('hidden');
   editingImages = null;
 }
