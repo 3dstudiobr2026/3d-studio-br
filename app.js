@@ -13,6 +13,66 @@ const el=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>n==null||n===''?'Preço sob consulta':Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function render(){const cats=['Todos',...new Set(products.map(p=>p.category))];if(!cats.includes(active))active='Todos';el('filters').innerHTML=cats.map(c=>`<button class="chip ${active===c?'active':''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');el('filters').querySelectorAll('button').forEach(b=>b.onclick=()=>{active=b.dataset.cat;render()});let shown=products.filter(p=>p.visible!==false&&(active==='Todos'||p.category===active)&&p.name.toLocaleLowerCase('pt-BR').includes(searchTerm));if(sortMode==='name')shown.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));if(sortMode==='price')shown.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity));el('products').innerHTML=shown.length?shown.map(p=>`<article class="product"><img src="${esc(p.image||'assets/logo.jpg')}" alt="${esc(p.name)}" loading="lazy"><div class="info"><span class="pill">${esc(p.category)}${p.featured?' ★ Destaque':''}</span><div class="name">${esc(p.name)}</div><div class="sub">${esc(p.desc)}</div><div class="price">${money(p.price)}</div><div class="small">${esc(p.status)}</div><button class="btn" data-order="${esc(p.id)}" ${p.status==='Indisponível'?'disabled':''}>${p.price==null?'SOLICITAR ORÇAMENTO':'PEDIR PELO WHATSAPP'} →</button></div></article>`).join(''):'<div class="empty">Nenhum produto encontrado.</div>';el('products').querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>openWhatsApp(b.dataset.order));el('rows').innerHTML=(isAdmin?products:[]).map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.category)}</td><td>${money(p.price)}</td><td>${p.visible===false?'Rascunho':'Publicado'} · ${esc(p.status)}</td><td><button class="ghost" data-edit="${esc(p.id)}">Editar</button> <button class="ghost" data-delete="${esc(p.id)}">Excluir</button></td></tr>`).join('');el('rows').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editProduct(b.dataset.edit));el('rows').querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteProduct(b.dataset.delete));}
+let modalProduct = null;
+let modalPhotoIndex = 0;
+
+function openProductModal(id) {
+  const p = products.find(x => x.id === String(id));
+  if (!p) return;
+
+  modalProduct = p;
+  modalPhotoIndex = 0;
+
+  el('modalProductName').textContent = p.name;
+  el('modalProductDescription').textContent = p.desc || '';
+  el('modalProductPrice').textContent = money(p.price);
+
+  el('modalOrderButton').onclick = () => openWhatsApp(p.id);
+
+  updateModalPhoto();
+  el('productModal').classList.remove('hidden');
+}
+
+function updateModalPhoto() {
+  if (!modalProduct) return;
+
+  const photos = modalProduct.images?.length
+    ? modalProduct.images
+    : [modalProduct.image];
+
+  el('modalPhoto').src = photos[modalPhotoIndex];
+  el('photoCounter').textContent =
+    `${modalPhotoIndex + 1} de ${photos.length}`;
+
+  el('prevPhoto').disabled = photos.length <= 1;
+  el('nextPhoto').disabled = photos.length <= 1;
+}
+function closeProductModal() {
+  el('productModal').classList.add('hidden');
+  modalProduct = null;
+}
+
+el('closeProductModal').onclick = closeProductModal;
+
+el('prevPhoto').onclick = () => {
+  if (!modalProduct) return;
+  const photos = modalProduct.images?.length
+    ? modalProduct.images
+    : [modalProduct.image];
+
+  modalPhotoIndex = (modalPhotoIndex - 1 + photos.length) % photos.length;
+  updateModalPhoto();
+};
+
+el('nextPhoto').onclick = () => {
+  if (!modalProduct) return;
+  const photos = modalProduct.images?.length
+    ? modalProduct.images
+    : [modalProduct.image];
+
+  modalPhotoIndex = (modalPhotoIndex + 1) % photos.length;
+  updateModalPhoto();
+};
 function showSite(){el('site').classList.remove('hidden');el('admin').classList.remove('open');window.scrollTo(0,0)}
 function showAdmin(){el('site').classList.add('hidden');el('admin').classList.add('open');el('phone').value='62981327266';window.scrollTo(0,0)}
 function openWhatsApp(id){let p=products.find(x=>x.id===id);const msg=p?`Olá! Vim pelo site da 3D Studio BR e gostaria de ${p.price==null?'solicitar orçamento para':'pedir'} ${p.name} (código ${p.sku||p.id}). ${p.price==null?'':`Preço anunciado: ${money(p.price)}. `}Poderia informar a disponibilidade e o prazo?`:'Olá! Vim pelo site da 3D Studio BR e gostaria de informações sobre produtos personalizados.';window.open(`https://wa.me/${config.whatsapp||'5562981327266'}?text=${encodeURIComponent(msg)}`,'_blank','noopener,noreferrer')}
